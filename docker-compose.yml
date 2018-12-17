@@ -1,0 +1,129 @@
+data00codebox:
+  image: busybox
+  volumes:
+    - ~/study-docker-compose/workspace/codebox:/workspace
+
+codebox:
+  build: codebox
+  ports:
+    - 8000:8000
+  volumes_from:
+    - data00codebox
+  environment:
+    CXX: g++-7
+    CC: gcc-7
+
+data-cutefiles:
+  image: busybox
+  volumes:
+    - ~/study-docker-compose/workspace:/cutefiles
+
+cutefiles:
+  build: cutefiles
+  volumes_from:
+    - data-cutefiles
+  ports:
+    - "3000:3000"
+
+data00redis:
+  image: busybox
+  volumes:
+    - ~/study-docker-compose/workspace/calc:/data
+
+redis:
+  image: redis
+  volumes_from:
+    - data00redis
+  command: redis-server --appendonly yes
+
+ethercalc:
+  image: audreyt/ethercalc
+  ports:
+    - "8002:8000"
+  links:
+    - redis:redis
+  command: ["sh", "-c", "REDIS_HOST=$$REDIS_PORT_6379_TCP_ADDR REDIS_PORT=$$REDIS_PORT_6379_TCP_PORT pm2 start -x `which ethercalc` -- --cors && pm2 logs"]
+
+data00mongo:
+  image: busybox
+  volumes:
+    - ~/study-docker-compose/workspace/mongo:/data/db
+
+mongo:
+  image: mongo
+  volumes_from:
+    - data00mongo
+
+libreboard:
+  image: wekanteam/wekan
+  environment:
+    MONGO_URL: mongodb://mongo/wekan
+    ROOT_URL: http://10.85.149.124:8080
+  links:
+    - mongo:mongo
+  ports:
+    - "8080:8080"
+
+manet:
+  image: earlyclaim/docker-manet
+  ports:
+    - "8891:8891"
+
+data00gitbucket:
+  image: busybox
+  volumes:
+    - ~/study-docker-compose/workspace/gitbucket:/data/db
+
+gitbucket:
+  image: f99aq8ove/gitbucket
+  ports:
+    - "29418:29418"
+    - "8082:8080"
+  volumes_from:
+    - data00gitbucket
+  command: java -jar /opt/gitbucket.war
+
+data00mysql:
+  image: busybox
+  volumes:
+    - ~/study-docker-compose/workspace/mysql:/var/lib/mysql
+
+data00redmine:
+  image: busybox
+  volumes:
+    - ~/study-docker-compose/workspace/redmine/files:/home/redmine/data/files
+    - ~/study-docker-compose/workspace/redmine/plugins:/home/redmine/data/plugins
+    - ~/study-docker-compose/workspace/redmine/themes:/home/redmine/data/themes
+
+mysql:
+  image: mysql
+  environment:
+    MYSQL_ROOT_PASSWORD: 1234567
+  volumes_from:
+    - data00mysql
+  ports:
+    - "3306:3306"
+
+redmine:
+  image: sameersbn/redmine
+  volumes_from:
+    - data00redmine
+    - data00gitbucket
+  links:
+    - mysql:mysql
+  ports:
+    - "80:80"
+  environment:
+    DB_USER: root
+    DB_NAME: redmine
+    DB_PASS: password
+
+reichat:
+  build: reichat
+  ports:
+    - "10133:10133"
+
+rancher:
+  image: rancher/server
+  ports:
+    - "8008:8080"
